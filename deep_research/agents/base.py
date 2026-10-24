@@ -86,7 +86,7 @@ from deep_research.agents.substack.tools import (
     _fetch_substack_article,
 )
 from deep_research.agents.web.tools import (
-    tavily_search, exa_deep_search,
+    tavily_search, exa_deep_search, desearch_search,
 )
 
 logger = logging.getLogger(__name__)
@@ -100,14 +100,14 @@ SEARCH_TOOL_NAMES = {
     "search_pubmed", "search_arxiv", "search_term_in_subreddit",
     "get_subreddit_posts", "search_subreddits", "search_sec_filings",
     "search_substack",
-    "tavily_search", "exa_deep_search",
+    "tavily_search", "exa_deep_search", "desearch_search",
 }
 
 # Search tools whose results get an [S#] handle for index-based reads.
 SEARCH_INDEXABLE_TOOLS = {
     "search_pubmed", "search_arxiv", "search_term_in_subreddit",
     "get_subreddit_posts", "search_sec_filings", "search_substack",
-    "tavily_search", "exa_deep_search",
+    "tavily_search", "exa_deep_search", "desearch_search",
 }
 
 _reddit_tools = _base_tools + [
@@ -137,25 +137,31 @@ _substack_tools = _base_tools + [
 
 _web_search_tools = []
 _warned = []
-if WEB_SEARCH_ENGINE in ("tavily", "both"):
+if WEB_SEARCH_ENGINE in ("tavily", "both", "all"):
     if get_secret("TAVILY_API_KEY"):
         _web_search_tools.append(tavily_search)
     else:
         _warned.append("TAVILY_API_KEY")
-if WEB_SEARCH_ENGINE in ("exa", "both"):
+if WEB_SEARCH_ENGINE in ("exa", "both", "all"):
     if get_secret("EXA_API_KEY"):
         _web_search_tools.append(exa_deep_search)
     else:
         _warned.append("EXA_API_KEY")
+if WEB_SEARCH_ENGINE in ("desearch", "both", "all"):
+    if get_secret("DESEARCH_API_KEY"):
+        _web_search_tools.append(desearch_search)
+    else:
+        _warned.append("DESEARCH_API_KEY")
 if _warned:
     logging.getLogger(__name__).warning(
         "WEB_SEARCH_ENGINE=%r but %s not set in .env — those search tools are "
         "not available to the web/general agents.",
         WEB_SEARCH_ENGINE, " and ".join(_warned),
     )
-elif WEB_SEARCH_ENGINE not in ("tavily", "exa", "both"):
+elif WEB_SEARCH_ENGINE not in ("tavily", "exa", "desearch", "both", "all"):
     logging.getLogger(__name__).warning(
-        "Invalid WEB_SEARCH_ENGINE=%r (expected 'tavily', 'exa', or 'both'). "
+        "Invalid WEB_SEARCH_ENGINE=%r (expected 'tavily', 'exa', 'desearch', "
+        "'both', or 'all'). "
         "No web search tools exposed.", WEB_SEARCH_ENGINE,
     )
 
@@ -209,10 +215,12 @@ def _runtime_search_tools():
     rt = get_runtime()
     engine = (rt.config.web_search_engine or "").lower()
     tools = []
-    if engine in ("tavily", "both") and rt.credentials.has("TAVILY_API_KEY"):
+    if engine in ("tavily", "both", "all") and rt.credentials.has("TAVILY_API_KEY"):
         tools.append(tavily_search)
-    if engine in ("exa", "both") and rt.credentials.has("EXA_API_KEY"):
+    if engine in ("exa", "both", "all") and rt.credentials.has("EXA_API_KEY"):
         tools.append(exa_deep_search)
+    if engine in ("desearch", "both", "all") and rt.credentials.has("DESEARCH_API_KEY"):
+        tools.append(desearch_search)
     return tools
 
 
@@ -223,7 +231,7 @@ def _dedupe_tools(tools) -> list:
 def _runtime_platform_tools(rt, agent_type: str) -> list:
     """Resolve the platform's tool list for the active runtime."""
     _web_static = [t for t in _PLATFORM_TOOL_SETS.get("web", [])
-                   if t.name not in {"tavily_search", "exa_deep_search"}]
+                   if t.name not in {"tavily_search", "exa_deep_search", "desearch_search"}]
     if agent_type == "web":
         return _dedupe_tools(list(_web_static) + _runtime_search_tools())
     if agent_type == "general":
@@ -236,7 +244,7 @@ def _runtime_platform_tools(rt, agent_type: str) -> list:
                 chosen.extend(_web_static)
             else:
                 chosen.extend(_PLATFORM_TOOL_SETS[key])
-        chosen = [t for t in chosen if t.name not in {"tavily_search", "exa_deep_search"}]
+        chosen = [t for t in chosen if t.name not in {"tavily_search", "exa_deep_search", "desearch_search"}]
         chosen.extend(_runtime_search_tools())
         return _dedupe_tools(chosen)
     return list(PLATFORMS.get(agent_type, PLATFORMS["reddit"]).get("tools", []))

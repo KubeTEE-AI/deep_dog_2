@@ -125,19 +125,28 @@ def validate_credentials(config: Optional[RunConfig] = None,
 
     # ── Web search engine keys ─────────────────────────────────────────
     engine = (cfg.web_search_engine or "").lower()
-    if engine in ("tavily", "both") and _missing(["TAVILY_API_KEY"]):
+    if engine in ("tavily", "both", "all") and _missing(["TAVILY_API_KEY"]):
         missing_required.append("TAVILY_API_KEY")
-    if engine in ("exa", "both") and _missing(["EXA_API_KEY"]):
+    if engine in ("exa", "both", "all") and _missing(["EXA_API_KEY"]):
         missing_required.append("EXA_API_KEY")
+    if engine in ("desearch", "both", "all") and _missing(["DESEARCH_API_KEY"]):
+        missing_required.append("DESEARCH_API_KEY")
 
     # ── Enabled-agent platform keys ────────────────────────────────────
     enabled = set(cfg.enabled_agents or [])
     if "ResearchReddit" in enabled:
         reddit_keys = ["REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET",
                        "REDDIT_USERNAME", "REDDIT_PASSWORD"]
-        if any(creds.has(k) is False for k in reddit_keys):
-            missing_required.extend(
-                k for k in reddit_keys if not creds.has(k))
+        # Desearch covers Reddit discovery/search without Reddit OAuth creds;
+        # when DESEARCH_API_KEY is present the Reddit key set is optional.
+        if _missing(["DESEARCH_API_KEY"]):
+            if any(creds.has(k) is False for k in reddit_keys):
+                missing_required.extend(
+                    k for k in reddit_keys if not creds.has(k))
+        else:
+            reddit_missing = [k for k in reddit_keys if not creds.has(k)]
+            if reddit_missing:
+                optional_missing.append("REDDIT_* (optional with DESEARCH_API_KEY)")
     if "ResearchPubMed" in enabled or "ResearchSEC" in enabled:
         if not creds.has("PUBMED_EMAIL") and not creds.has("SEC_EDGAR_CONTACT_EMAIL"):
             optional_missing.append("PUBMED_EMAIL")

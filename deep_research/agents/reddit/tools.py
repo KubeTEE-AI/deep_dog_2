@@ -159,6 +159,50 @@ def _reddit_search_item(post: dict) -> dict:
     }
 
 
+def _reddit_creds_present() -> bool:
+    """True when the full Reddit OAuth key set is available."""
+    return all(get_secret(k) for k in (
+        "REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET",
+        "REDDIT_USERNAME", "REDDIT_PASSWORD"))
+
+
+async def _reddit_search_via_desearch(query: str, limit: int,
+                                      subreddit: str = "") -> dict:
+    """Reddit search via Desearch (SN22) — used when Reddit OAuth creds are
+    missing (and DESEARCH_API_KEY is set).
+
+    Returns the same {display, items} contract as the OAuth search path, with
+    score/comment counts unknown (0) — Desearch returns links + snippets only,
+    so thread detail still comes from get_reddit_posts on the OAuth path.
+    """
+    from deep_research.utils import desearch_search_multiple, deduplicate_search_results
+
+    subreddit = (subreddit or "").lower().replace("r/", "").strip()
+    search_query = f"{query} site:reddit.com" if not subreddit else \
+        f"{query} site:reddit.com/r/{subreddit}"
+    logger.info(f"{_DARK_ORANGE}Search Reddit (via Desearch){_RESET}: '{query}'"
+                + (f" in r/{subreddit}" if subreddit else ""))
+    try:
+        responses = await desearch_search_multiple(
+            [search_query], max_results=limit, tools=["reddit"])
+    except Exception as e:
+        return {"display": f"Error searching Reddit via Desearch: {e}", "items": []}
+
+    unique = deduplicate_search_results(responses)
+    posts = [
+        {"title": r.get("title", ""), "url": url, "score": 0,
+         "comments": 0, "date": "unknown", "age": "unknown"}
+        for url, r in unique.items()
+    ][:limit]
+    if not posts:
+        return {"display": f"No results for: '{query}'", "items": []}
+    display = _format_reddit_posts(
+        posts, f"Found {len(posts)} posts for '{query}' (via Desearch; "
+               "score/comment counts unavailable — read posts for detail):")
+    return {"display": display,
+            "items": [_reddit_search_item(p) for p in posts]}
+
+
 def _format_reddit_comments(
     comments: list,
     depth: int = 0,
@@ -241,6 +285,9 @@ async def search_term_in_subreddit(
         subreddit: Optional subreddit to restrict search to (e.g. 'stocks')
     """
     limit = min(max(1, limit), 200)
+    if not _reddit_creds_present():
+        # Desearch covers Reddit discovery without Reddit OAuth credentials.
+        return await _reddit_search_via_desearch(query, min(limit, 20), subreddit)
     if subreddit:
         subreddit = subreddit.lower().replace("r/", "").strip()
         base_url = _oauth_url(f"https://oauth.reddit.com/r/{subreddit}/search")
@@ -321,6 +368,10 @@ async def get_subreddit_posts(
     """
     subreddit = subreddit.lower().replace("r/", "").strip()
     limit = min(max(1, limit), 200)
+    if not _reddit_creds_present():
+        # Desearch covers subreddit feeds without Reddit OAuth credentials.
+        return await _reddit_search_via_desearch(
+            f"r/{subreddit}", min(limit, 20), subreddit)
     base_url = _oauth_url(f"https://oauth.reddit.com/r/{subreddit}/{listing}")
 
     logger.info(f"{_DARK_ORANGE}Reddit{_RESET} fetching {limit} {listing} posts from r/{subreddit}")

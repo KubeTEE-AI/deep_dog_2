@@ -106,6 +106,32 @@ def _arxiv_fetch_details(arxiv_id: str) -> dict:
             "authors": authors[:15], "published": published, "category": category}
 
 
+async def _search_arxiv_via_desearch(query: str, max_results: int) -> list:
+    """arXiv search via Desearch (SN22) — resilience fallback when the arXiv
+    Atom API fails or rate-limits. Returns article-shaped dicts with the
+    fields the search display needs (arxiv_id, title, summary, authors,
+    published, category, url); details still come from the arXiv API."""
+    from deep_research.utils import desearch_search_multiple, deduplicate_search_results
+
+    logger.info(f"{_BLUE}Search arXiv (via Desearch){_RESET}: '{query[:80]}'")
+    try:
+        responses = await desearch_search_multiple(
+            [query], max_results=max_results, tools=["arxiv"])
+    except Exception as e:
+        logger.warning(f"Desearch arXiv fallback failed: {e}")
+        return []
+    unique = deduplicate_search_results(responses)
+    results = []
+    for url, r in unique.items():
+        arxiv_id = url.rstrip("/").split("/abs/")[-1].split("/pdf/")[-1]
+        results.append({
+            "arxiv_id": arxiv_id, "title": r.get("title", "Untitled")[:300],
+            "summary": (r.get("content") or "")[:400], "authors": [],
+            "published": "", "category": "", "url": url,
+        })
+    return results[:max_results]
+
+
 # ── Tools ──────────────────────────────────────────────────────────────
 
 @tool(parse_docstring=True)
@@ -146,7 +172,10 @@ async def search_arxiv(
     try:
         results = await asyncio.to_thread(_arxiv_search, query, max_results, sort_by, category, year_from, year_to)
     except Exception as e:
-        return f"arXiv search error: {e}"
+        logger.warning(f"arXiv search error ({e}); trying Desearch fallback")
+        results = await _search_arxiv_via_desearch(query, max_results)
+        if not results:
+            return f"arXiv search error: {e}"
 
     if not results:
         return {"display": f"No arXiv results for: '{query}'", "items": []}

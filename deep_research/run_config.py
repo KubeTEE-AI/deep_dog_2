@@ -115,7 +115,7 @@ class RunConfig:
         default_factory=lambda: list(_cfg.GENERAL_AGENT_PLATFORMS))
 
     # ── Web search ─────────────────────────────────────────────────────
-    web_search_engine: str = _cfg.WEB_SEARCH_ENGINE          # "tavily"|"exa"|"both"
+    web_search_engine: str = _cfg.WEB_SEARCH_ENGINE          # "tavily"|"exa"|"desearch"|"both"|"all"
     exa_search_max_chars: int = _cfg.EXA_SEARCH_MAX_CHARS
     fetch_url_max_chars: int = _cfg.FETCH_URL_MAX_CHARS
 

@@ -205,7 +205,8 @@ async def fetch_urls(urls: list) -> str:
 
 
 async def _fetch_url_content(url: str) -> tuple[str, str]:
-    """Fetch and extract content from a single URL (via Tavily).
+    """Fetch and extract content from a single URL (Tavily extract, or
+    Desearch web_crawl when no Tavily key is configured).
 
     Returns (title, body): the title is used to register an [S#] index entry
     so external URLs can be saved by ref; the body is the model-facing text.
@@ -213,7 +214,7 @@ async def _fetch_url_content(url: str) -> tuple[str, str]:
     logger.info(f"fetch_urls: {url}")
     api_key = get_secret("TAVILY_API_KEY")
     if not api_key:
-        return url, "Error: fetch_urls requires TAVILY_API_KEY in .env"
+        return await _fetch_url_via_desearch(url)
 
     try:
         from tavily import TavilyClient
@@ -246,6 +247,25 @@ async def _fetch_url_content(url: str) -> tuple[str, str]:
     date_line = f"**Date:** {date}\n" if date else ""
 
     return title, f"# {title}\n{author_line}{date_line}**URL:** {url}\n\n{text}"
+
+
+async def _fetch_url_via_desearch(url: str) -> tuple[str, str]:
+    """Desearch web_crawl fallback for fetch_urls when Tavily is not configured.
+
+    Returns (title, body) with the same contract as the Tavily path.
+    """
+    from deep_research.utils import _desearch_crawl_text
+
+    if not get_secret("DESEARCH_API_KEY"):
+        return url, ("Error: fetch_urls requires TAVILY_API_KEY or "
+                     "DESEARCH_API_KEY in .env")
+    text = await _desearch_crawl_text(url)
+    if text.startswith("Failed to fetch"):
+        return url, text
+    text = text[:FETCH_URL_MAX_CHARS]
+    if not text.strip():
+        return url, f"Failed to extract content from {url}: no content extracted"
+    return url, f"# {url}\n**URL:** {url}\n\n{text}"
 
 
 # ═════════════════════════════════════════════════════════════════════════

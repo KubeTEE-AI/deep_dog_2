@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased (kubetee-staging)
+
+- **Desearch (Bittensor SN22) provider** (KubeTEE integration): a new
+  `desearch_search` web tool (multi-source: web, X/Twitter, Reddit, arXiv,
+  YouTube, Hacker News, Wikipedia) joins Tavily and Exa; `WEB_SEARCH_ENGINE`
+  accepts `"desearch"`, `"both"` (Tavily + Exa, unchanged), and `"all"`.
+  `fetch_urls` falls back to Desearch `web_crawl` when `TAVILY_API_KEY` is
+  absent. `ResearchReddit` search/feeds fall back to Desearch when Reddit OAuth
+  credentials are missing (thread reads still need them), and `search_arxiv`
+  falls back to Desearch when the arXiv Atom API fails. Credential pre-flight
+  (`validate_credentials`) knows `DESEARCH_API_KEY` and treats the Reddit key
+  set as optional when it is present. Cost metadata (`X-Desearch-Cost-Usd`,
+  `X-Desearch-Usage-Count`) is parsed per request. No new runtime dependency —
+  the integration uses the existing `aiohttp` stack (the official `desearch-py`
+  SDK adds no API value over two REST endpoints). `DESEARCH_BASE_URL` overrides
+  the API base (default `https://api.desearch.ai`).
+
 ## Unreleased
 
 - Restore the original engine's research timing: the supervisor routes to

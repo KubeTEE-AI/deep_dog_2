@@ -150,6 +150,8 @@ The installer fetches the repository, builds the package and installs its depend
 ```dotenv
 DEEPSEEK_API_KEY=your-deepseek-key
 EXA_API_KEY=your-exa-key
+# Optional — Desearch (Bittensor SN22) web/social search + page extraction:
+# DESEARCH_API_KEY=your-desearch-key
 ```
 
 Keep `.env` out of version control by adding it to your project's `.gitignore`. If those keys are already set as environment variables, no `.env` file is needed; existing environment variables take precedence.
@@ -383,7 +385,7 @@ This profile needs both `DEEPSEEK_API_KEY` and `OPENROUTER_API_KEY`. The model n
 
 ## Choose search and agent types
 
-Set `web_search_engine` to `"exa"`, `"tavily"`, or `"both"`. Supply `EXA_API_KEY`, `TAVILY_API_KEY`, or both keys respectively. This selects **web search**; specialist agents use their own platform tools.
+Set `web_search_engine` to `"exa"`, `"tavily"`, `"desearch"`, `"both"` (Tavily + Exa), or `"all"` (every configured provider). Supply `EXA_API_KEY`, `TAVILY_API_KEY`, and/or `DESEARCH_API_KEY` respectively. This selects **web search**; specialist agents use their own platform tools.
 
 Only Web is enabled by default. Add the exact names you want:
 
@@ -393,8 +395,8 @@ enabled_agents=["ResearchWeb", "ResearchArxiv", "ResearchPubMed"]
 
 | Agent name | Searches / reads | Additional setup |
 |---|---|---|
-| `ResearchWeb` | General web sources | Exa and/or Tavily key |
-| `ResearchReddit` | Reddit discussions | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USERNAME`, `REDDIT_PASSWORD` |
+| `ResearchWeb` | General web + social sources | Exa, Tavily, and/or Desearch (Bittensor SN22) key |
+| `ResearchReddit` | Reddit discussions | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USERNAME`, `REDDIT_PASSWORD` (or `DESEARCH_API_KEY` — covers Reddit search without Reddit OAuth; thread reads still need the Reddit keys) |
 | `ResearchSubstack` | Substack articles | `PERPLEXITY_API_KEY` for search |
 | `ResearchArxiv` | arXiv papers | No platform key |
 | `ResearchPubMed` | PubMed literature | Set `PUBMED_EMAIL` to your contact email |
@@ -465,7 +467,7 @@ In a source checkout, the older [run_research.py](run_research.py) remains avail
 Common issues:
 
 - **Import fails:** activate your application's environment and use the GitHub package install command above. Editable installation (`-e .`) applies only to a source checkout.
-- **Missing keys:** load `.env` before engine imports and provide keys for your selected models and search providers. The defaults need only `DEEPSEEK_API_KEY` and `EXA_API_KEY`. Use `RunConfig` for per-request changes.
+- **Missing keys:** load `.env` before engine imports and provide keys for your selected models and search providers. The defaults need only `DEEPSEEK_API_KEY` and `EXA_API_KEY` (or `DESEARCH_API_KEY` with `web_search_engine="desearch"`). Use `RunConfig` for per-request changes.
 - **Model rejects tools or structured output:** choose an endpoint with the required capability; the routing catalog is not a live provider compatibility check.
 - **Empty or partial report:** inspect `status`, `failure` and `run_metadata`, allow at least four sub-agent loops, and leave time for writing.
 - **Unexpected scope:** include the region, date range, audience and desired output in your question. The current graph does not pause to ask the user clarifying questions.

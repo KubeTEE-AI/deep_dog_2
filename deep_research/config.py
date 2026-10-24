@@ -189,9 +189,11 @@ Examples of model names accepted by get_model():
 #
 # ── Web search ──────────────────────────────────────────────────────────
 # WEB_SEARCH_ENGINE          Which search tools to expose.
-#                            "tavily" — Tavily only
-#                            "exa"    — Exa only
-#                            "both"   — both Tavily and Exa
+#                            "tavily"   — Tavily only
+#                            "exa"      — Exa only
+#                            "desearch" — Desearch (Bittensor SN22) only
+#                            "both"     — both Tavily and Exa
+#                            "all"      — every configured provider
 #                            Default: "exa"
 #                            Env: WEB_SEARCH_ENGINE
 #
@@ -234,12 +236,14 @@ Examples of model names accepted by get_model():
 #   META_API_KEY                         Meta Muse native API
 #   GEMINI_API_KEY (or GOOGLE_API_KEY)   Google Gemini
 #   TAVILY_API_KEY                       Tavily web search
+#   DESEARCH_API_KEY                     Desearch (Bittensor SN22) search/extract
 #   OPENROUTER_API_KEY                   OpenRouter (for nvidia, baba, fallback)
 #
 # Optional:
 #   OPENAI_API_KEY                       OpenAI
 #   ZHIPUAI_API_KEY                      Z.AI GLM
 #   EXA_API_KEY                          Exa search
+#   DESEARCH_BASE_URL                    Desearch API base (default https://api.desearch.ai)
 #   PERPLEXITY_KEY                       Substack/Perplexity search
 #   PUBMED_EMAIL                         PubMed E-utilities contact
 #   SEC_EDGAR_CONTACT_EMAIL              SEC EDGAR contact
@@ -694,7 +698,11 @@ def _resolve_route_flag(role_flag: str, explicit: bool | None = None) -> bool:
 DISABLE_MODEL_FALLBACK = os.environ.get("DISABLE_MODEL_FALLBACK", "yes").strip().lower() in {"1", "true", "yes", "on"}
 
 # Which web search engine to expose to the web/general platform agents.
-# "tavily" = only Tavily; "exa" = only Exa (default); "both" = expose both.
+# "tavily"   = only Tavily
+# "exa"      = only Exa (default)
+# "desearch" = only Desearch (Bittensor SN22)
+# "both"     = Tavily + Exa (historical meaning)
+# "all"      = every configured provider
 WEB_SEARCH_ENGINE = os.environ.get("WEB_SEARCH_ENGINE", "exa").strip().lower()
 
 # Max characters of extracted page text Exa returns per search result. This

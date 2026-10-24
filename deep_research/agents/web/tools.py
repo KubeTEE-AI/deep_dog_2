@@ -1,4 +1,4 @@
-"""Web search tools: Tavily, Exa."""
+"""Web search tools: Tavily, Exa, Desearch (Bittensor SN22)."""
 
 import logging
 from typing_extensions import Annotated, Literal, Optional
@@ -10,6 +10,7 @@ from deep_research.utils import (
     process_search_results,
     format_search_output,
     _exa_search_multiple,
+    desearch_search_multiple,
 )
 
 logger = logging.getLogger(__name__)
@@ -120,4 +121,65 @@ async def exa_deep_search(
 
     elapsed = time.time() - start_time
     logger.info(f"Exa complete for '{query}' in {elapsed:.2f}s ({len(summarized_results)} sources)")
+    return _format_web_search(summarized_results)
+
+
+@tool(parse_docstring=True)
+async def desearch_search(
+    query: str,
+    max_results: int = 10,
+    tools: Literal["web+twitter+reddit", "web", "web+arxiv", "web+reddit",
+                  "web+youtube", "all"] = "web+twitter+reddit",
+    date_filter: Optional[Literal["PAST_24_HOURS", "PAST_2_DAYS", "PAST_WEEK",
+                                  "PAST_2_WEEKS", "PAST_MONTH", "PAST_2_MONTHS",
+                                  "PAST_YEAR", "PAST_2_YEARS"]] = None,
+) -> str:
+    """Search web + social + academic sources with Desearch (Bittensor SN22).
+
+    Broader than a plain web search — one query fans out across web pages,
+    X/Twitter posts, and Reddit threads (plus arXiv, YouTube, Hacker News and
+    Wikipedia via `tools`), which is where real-time sentiment and community
+    discussion live. Results carry an [S#] handle — read promising sources with
+    fetch_urls(urls=[...]) and save them with batch_save_selected.
+
+    - Run parallel searches ONLY when the topic demands 2+ distinct,
+      non-overlapping angles; otherwise search once and read.
+    - `tools` picks the source mix: 'web+twitter+reddit' (default) for broad
+      coverage, 'web+arxiv' for technical topics, 'web+youtube' for video-led
+      topics, 'all' for everything.
+    - `date_filter` bounds recency ('PAST_WEEK', 'PAST_MONTH', ...); leave
+      unset for evergreen questions.
+    - Each call counts toward your SEARCH budget; don't re-search once capped.
+
+    Args:
+        query: Search query for Desearch
+        max_results: Desired number of results (1-20). 5-10 is enough for most
+            searches.
+        tools: Source mix preset (see above)
+        date_filter: Recency window preset (see above)
+    """
+    import time
+
+    start_time = time.time()
+    max_results = min(max(max_results, 1), 20)
+    tool_map = {
+        "web+twitter+reddit": ["web", "twitter", "reddit"],
+        "web": ["web"],
+        "web+arxiv": ["web", "arxiv"],
+        "web+reddit": ["web", "reddit"],
+        "web+youtube": ["web", "youtube"],
+        "all": ["web", "twitter", "reddit", "arxiv", "youtube", "hackernews", "wikipedia"],
+    }
+    logger.info(f"Desearch search: '{query}' (tools={tools})")
+
+    search_results = await desearch_search_multiple(
+        [query], max_results=max_results,
+        tools=tool_map.get(tools, ["web", "twitter", "reddit"]),
+        date_filter=date_filter,
+    )
+    unique_results = deduplicate_search_results(search_results)
+    summarized_results = await process_search_results(unique_results, tool_name="desearch")
+
+    elapsed = time.time() - start_time
+    logger.info(f"Desearch complete for '{query}' in {elapsed:.2f}s ({len(summarized_results)} sources)")
     return _format_web_search(summarized_results)

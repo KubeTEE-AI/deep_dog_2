@@ -10,6 +10,7 @@ from pathlib import Path
 from typing_extensions import List, Literal, Optional
 import aiohttp
 import asyncio
+import os
 
 from tavily import TavilyClient
 
@@ -112,6 +113,120 @@ tavily_client = TavilyClient()
 MAX_CONTEXT_LENGTH = 250000
 TAVILY_TIMEOUT = 30.0  # 30 seconds for Tavily API calls
 EXA_TIMEOUT = 35.0
+DESEARCH_TIMEOUT = 45.0  # 45 seconds per Desearch call (multi-source fan-out)
+# Desearch (Bittensor SN22) REST base URL. DESEARCH_BASE_URL lets deployments
+# point at a proxy without patching (matches the desearch-py SDK's base_url).
+DESEARCH_BASE_URL = os.environ.get("DESEARCH_BASE_URL", "https://api.desearch.ai")
+
+# ═════════════════════════════════════════════════════════════════════════
+#  DESEARCH (Bittensor SN22) — search + extract client
+# ═════════════════════════════════════════════════════════════════════════
+
+class DesearchError(RuntimeError):
+    """Desearch rejected a request; status and body are retained for logs."""
+
+
+async def _desearch_request(method: str, path: str, *, params: dict = None,
+                            json_body: dict = None,
+                            timeout: float = DESEARCH_TIMEOUT):
+    """One authenticated Desearch call. Returns (json, cost_metadata).
+
+    Auth header is ``Authorization: <key>`` — the format the official
+    ``desearch-py`` SDK sends. The API also accepts ``Authorization: Bearer
+    <key>`` and ``x-api-key``. Cost metadata is parsed from the
+    ``X-Desearch-Cost-Usd`` / ``X-Desearch-Usage-Count`` / ``X-Desearch-Service``
+    / ``X-Desearch-Currency`` response headers when present.
+    """
+    api_key = get_secret("DESEARCH_API_KEY")
+    if not api_key:
+        raise ValueError("DESEARCH_API_KEY not found in environment variables.")
+    url = f"{DESEARCH_BASE_URL}{path}"
+    async with aiohttp.ClientSession(
+        timeout=aiohttp.ClientTimeout(total=timeout),
+        headers={"Authorization": api_key, "Accept-Encoding": "gzip, deflate"},
+    ) as session:
+        async with session.request(method, url, params=params, json=json_body) as response:
+            if response.status != 200:
+                error_text = (await response.text())[:500]
+                raise DesearchError(f"HTTP {response.status} for {path}: {error_text}")
+            cost = {
+                "cost_usd": response.headers.get("X-Desearch-Cost-Usd"),
+                "usage_count": response.headers.get("X-Desearch-Usage-Count"),
+                "service": response.headers.get("X-Desearch-Service"),
+                "currency": response.headers.get("X-Desearch-Currency"),
+            }
+            return await response.json(), cost
+
+
+def _desearch_platform_items(data, tool_key: str) -> List[dict]:
+    """Flatten one platform's result list out of an ai_web_links_search body."""
+    if not isinstance(data, dict):
+        return []
+    items = data.get(tool_key) or []
+    return items if isinstance(items, list) else []
+
+
+async def desearch_search_multiple(search_queries: List[str], max_results: int = 10,
+                                   tools: Optional[List[str]] = None,
+                                   date_filter: Optional[str] = None) -> List[dict]:
+    """Execute Desearch ``ai_web_links_search`` for multiple queries.
+
+    Returns one ``{"results": [...]}`` entry per query (the shared shape used by
+    deduplicate_search_results), with items normalized to the internal schema.
+    ``tools`` are Desearch tool names (web, twitter, reddit, arxiv, youtube,
+    hackernews, wikipedia); default is web + twitter + reddit for broad
+    coverage. ``date_filter`` is a Desearch DateFilter enum value (e.g.
+    "PAST_WEEK") or None for no recency bound.
+
+    NOTE: one call fans out server-side to every requested tool, so the
+    billable miner work is larger than the per-call search budget suggests.
+    """
+    tools = tools if tools is not None else ["web", "twitter", "reddit"]
+    responses = []
+    for query in search_queries:
+        try:
+            data, _cost = await _desearch_request(
+                "POST", "/desearch/ai/search",
+                json_body={
+                    "prompt": query,
+                    "tools": tools,
+                    "streaming": False,
+                    "result_type": "ONLY_LINKS",
+                    "count": min(max(max_results, 10), 200),
+                    **({"date_filter": date_filter} if date_filter else {}),
+                },
+            )
+            raw_results: List[dict] = []
+            for tool_key in ("search_results", "search", "tweets",
+                             "reddit_search", "reddit_search_results",
+                             "arxiv_search", "arxiv_search_results",
+                             "youtube_search", "youtube_search_results",
+                             "hacker_news_search", "hacker_news_search_results",
+                             "wikipedia_search_results"):
+                raw_results.extend(_desearch_platform_items(data, tool_key))
+            normalized = [_normalize_search_item(item, provider="desearch")
+                          for item in raw_results]
+            responses.append({"results": [r for r in normalized if r.get("url")][:max_results]})
+        except Exception as e:
+            logger.warning(f"Desearch search failed for '{query}': {e}")
+            responses.append({"results": []})
+    return responses
+
+
+async def _desearch_crawl_text(url: str, timeout: float = DESEARCH_TIMEOUT) -> str:
+    """Crawl one URL via Desearch ``web_crawl`` and return plain text."""
+    try:
+        data, _cost = await _desearch_request(
+            "GET", "/web/crawl", params={"url": url, "format": "text"},
+            timeout=timeout,
+        )
+    except Exception as e:
+        return f"Failed to fetch {url}: {e}"
+    if isinstance(data, dict):
+        # Tolerate both bare-text and {"content"/"text": ...} response shapes.
+        text = data.get("content") or data.get("text") or data.get("data") or ""
+        return text if isinstance(text, str) else str(text)
+    return data if isinstance(data, str) else str(data)
 
 # ===== SEARCH FUNCTIONS =====
 
@@ -210,6 +325,13 @@ def _normalize_search_item(item: dict, provider: str) -> dict:
         # Exa returns the extracted page text in `text`. Full text = `text`;
         # preview = truncated full text.
         raw_content = item.get("text") or item.get("content") or ""
+    elif provider == "desearch":
+        # Desearch ai_web_links_search returns {title, snippet, link}. Full text
+        # is the page text when present (rare in the links-only mode); the
+        # snippet serves as the preview and full-text fallback. Depth comes
+        # from fetch_urls → Desearch web_crawl.
+        raw_content = (item.get("text") or item.get("page_text")
+                       or item.get("snippet") or "")
     else:
         # Tavily returns a short `content` snippet plus `raw_content` (full text
         # when include_raw_content=True). Full text = `raw_content`; preview =
