@@ -76,7 +76,7 @@ def test_model_required_keys_kubetee_aliases():
 
 def test_model_required_keys_native_names_unchanged():
     assert _cfg.model_required_keys("glm-5.3-flash") == ["ZHIPUAI_API_KEY"]
-    assert "DEEPSEEK_API_KEY" in _cfg.model_required_keys("deepseek-v4-flash")
+    assert "DEEPSEEK_API_KEY" in _cfg.model_required_keys("deepseek-v4.1-flash-1017")
 
 
 def test_validate_credentials_kubetee_key_required(monkeypatch):

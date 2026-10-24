@@ -133,8 +133,8 @@ async def run_platform(
 # model names, so gemini and the Alibaba-Singapore deepseek are just another
 # chain entry. `--provider` picks one of these; default = SUBAGENT_MODEL_FALLBACK_CHAIN.
 _CLI_MODEL_CHAIN = {
-    "mimo": ["mimo-v2.5-pro"],
-    "deepseek": ["deepseek-v4-flash"],
+    "mimo": ["mimo-v2.6-pro"],
+    "deepseek": ["deepseek-v4.1-flash-1017"],
     "deepseek-baba-singapore": ["deepseek-baba-singapore"],
     "gemini": ["gemini-3-flash-preview"],
     "meta": ["meta/muse-spark-1.2"],

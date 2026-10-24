@@ -12,7 +12,7 @@ flags in the Routing section below.
 Examples of model names accepted by get_model():
     - OpenAI: "gpt-5", "gpt-5-mini"
     - Google Gemini: "gemini-2.5-pro", "gemini-3-flash-preview", "gemini-3-pro-preview"
-    - DeepSeek: "deepseek-v4-pro", "deepseek-v4-flash"
+    - DeepSeek: "deepseek-v4.1-flash-1017", "deepseek-v4.1-flash"
     - OpenRouter Nemotron: "nvidia/nemotron-3.5-lightning"
 """
 
@@ -24,12 +24,12 @@ Examples of model names accepted by get_model():
 # ═══════════════════════════════════════════════════════════════════════════
 #
 # DEEPSEEK (native API: api.deepseek.com) — env: DEEPSEEK_API_KEY
-#   deepseek-v4-flash          fast, cost-effective, tool calling
-#   deepseek-v4-pro            strongest reasoning, slower
+#   deepseek-v4.1-flash-1017   current pick: fast, cost-effective, tool calling
+#   deepseek-v4.1-flash        same v4.1-flash line, undated alias
 #
 # MIMO (native API: api.xiaomimimo.com) — env: MIMO_API_KEY
-#   mimo-v2.5-pro              flagship, strong agentic/coding (1M context)
-#   mimo-v2.5                  lighter, ~half cost (native, both hosted)
+#   mimo-v2.6-pro              flagship, strong agentic/coding
+#   mimo-v2.6-flash            lighter, cheaper
 #
 # META MUSE (native API: api.meta.ai/v1) — env: META_API_KEY
 #   muse-spark-1.2             reasoning model for agentic tasks (1M ctx)
@@ -60,7 +60,7 @@ Examples of model names accepted by get_model():
 # OPENROUTER (single key covers all) — env: OPENROUTER_API_KEY
 #   Set ROUTE_VIA_OPENROUTER=true to route deepseek/mimo/meta through OR.
 #   Any slug from openrouter.ai/models works directly:
-#     "deepseek/deepseek-v4-pro", "xiaomi/mimo-v2.5", "meta/muse-spark-1.2"
+#     "deepseek/deepseek-v4.1-flash-1017", "xiaomi/mimo-v2.6-pro", "meta/muse-spark-1.2"
 #   DeepSeek V4 Flash via Alibaba (Singapore): "deepseek-baba-singapore"
 #
 # ═══════════════════════════════════════════════════════════════════════════
@@ -69,27 +69,26 @@ Examples of model names accepted by get_model():
 #
 # ── Model selection ─────────────────────────────────────────────────────
 # SUBAGENT_MODEL             Primary sub-agent model (any model name above)
-#                            Default: "deepseek-v4-flash"
+#                            Default: "deepseek-v4.1-flash-1017"
 #                            Env: SUBAGENT_MODEL
 # SUBAGENT_MODEL_FALLBACK_CHAIN   Comma-separated fallback list.
-#                            Default: [SUBAGENT_MODEL, "deepseek-v4-flash"]
+#                            Default: [SUBAGENT_MODEL]
 #                            Env: SUBAGENT_MODEL_FALLBACK_CHAIN
 # SUBAGENT_MODEL_CHAIN_BY_AGENT   Per-agent override map, keyed by
 #                            AGENT_REGISTRY key (e.g. "ResearchReddit").
 #                            Empty (default) = shared SUBAGENT_MODEL_FALLBACK_CHAIN.
 # SUPERVISOR_MODEL           Supervisor model (any model name above)
-#                            Default: "deepseek-v4-flash"
+#                            Default: "deepseek-v4.1-flash-1017"
 #                            Env: SUPERVISOR_MODEL
 # SUPERVISOR_MODEL_FALLBACK_CHAIN   Comma-separated fallback list.
-#                            Default: [SUPERVISOR_MODEL, "deepseek-v4-pro"]
+#                            Default: [SUPERVISOR_MODEL]
 #                            Env: SUPERVISOR_MODEL_FALLBACK_CHAIN
 # DRAFT_REPORT_MODEL         Research brief and initial draft model (any model
 #                            name above).
-#                            Default: "deepseek-v4-flash"
+#                            Default: "deepseek-v4.1-flash-1017"
 #                            Env: DRAFT_REPORT_MODEL
 # DRAFT_REPORT_MODEL_FALLBACK_CHAIN   Comma-separated fallback list.
-#                            Default: [DRAFT_REPORT_MODEL, "deepseek-v4-flash",
-#                            "deepseek-v4-pro"]
+#                            Default: [DRAFT_REPORT_MODEL]
 #                            Env: DRAFT_REPORT_MODEL_FALLBACK_CHAIN
 #
 # ── Routing ─────────────────────────────────────────────────────────────
@@ -267,9 +266,9 @@ from langchain_core.messages import AIMessage
 # ===== CONFIGURATION =====
 
 # Supervisor model can be configured independently from subagents.
-# Defaults to DeepSeek V4 Flash unless overridden
+# Defaults to DeepSeek V4.1 Flash (1017) unless overridden
 # via environment variable.
-SUPERVISOR_MODEL = os.environ.get("SUPERVISOR_MODEL", "deepseek-v4-flash")
+SUPERVISOR_MODEL = os.environ.get("SUPERVISOR_MODEL", "deepseek-v4.1-flash-1017")
 
 # OPEN             = lean, most open-ended; minimal draft, supervisor fills in the information
 # Env: PROMPT_VERSION (only OPEN is supported)
@@ -392,29 +391,30 @@ ENABLE_RESEARCH_TRACE: bool = False #os.environ.get("DISABLE_RESEARCH_TRACE", ""
 #}
 
 # Supervisor-specific fallback chain (model NAMES, not providers — routing is
-# resolved by get_model()). If unset, defaults to [SUPERVISOR_MODEL, deepseek-v4-pro].
-# Example env value: "deepseek-v4-flash,deepseek-v4-pro"
+# resolved by get_model()). If unset, defaults to [SUPERVISOR_MODEL] — the v4.1
+# line is flash-only, so there is no distinct pro fallback anymore.
+# Example env value: "deepseek-v4.1-flash-1017,deepseek-v4.1-flash"
 _supervisor_chain_env = os.environ.get("SUPERVISOR_MODEL_FALLBACK_CHAIN", "").strip()
 if _supervisor_chain_env:
     SUPERVISOR_MODEL_FALLBACK_CHAIN = [
         m.strip() for m in _supervisor_chain_env.split(",") if m.strip()
     ]
 else:
-    SUPERVISOR_MODEL_FALLBACK_CHAIN = [SUPERVISOR_MODEL, "deepseek-v4-pro"]
+    SUPERVISOR_MODEL_FALLBACK_CHAIN = [SUPERVISOR_MODEL]
 
 # Sub-agent model chain (research platform agents), as
 # model NAMES resolved by get_model(). SUBAGENT_MODEL is the primary; the chain
 # is the ordered fallback list. Override the whole chain with
 # SUBAGENT_MODEL_FALLBACK_CHAIN (comma-separated env value).
-# Example env value: "nvidia/nemotron-3.5-lightning,deepseek-v4-flash"
-SUBAGENT_MODEL = os.environ.get("SUBAGENT_MODEL", "deepseek-v4-flash")
+# Example env value: "nvidia/nemotron-3.5-lightning,deepseek-v4.1-flash-1017"
+SUBAGENT_MODEL = os.environ.get("SUBAGENT_MODEL", "deepseek-v4.1-flash-1017")
 _subagent_chain_env = os.environ.get("SUBAGENT_MODEL_FALLBACK_CHAIN", "").strip()
 if _subagent_chain_env:
     SUBAGENT_MODEL_FALLBACK_CHAIN = [
         m.strip() for m in _subagent_chain_env.split(",") if m.strip()
     ]
 else:
-    SUBAGENT_MODEL_FALLBACK_CHAIN = [SUBAGENT_MODEL, "deepseek-v4-flash"]
+    SUBAGENT_MODEL_FALLBACK_CHAIN = [SUBAGENT_MODEL]
 
 # Draft-report model for the research brief and the initial, cold,
 # non-cacheable draft pass in research_agent_scope.py. These passes do not use
@@ -422,14 +422,14 @@ else:
 # are scaffolding that must be LONG, not perfect, so a fast model is fine.
 # Override with DRAFT_REPORT_MODEL to point both passes at any model.
 # Example env value: "nvidia/nemotron-3.5-lightning"
-DRAFT_REPORT_MODEL = os.environ.get("DRAFT_REPORT_MODEL", "deepseek-v4-flash").strip()
+DRAFT_REPORT_MODEL = os.environ.get("DRAFT_REPORT_MODEL", "deepseek-v4.1-flash-1017").strip()
 _draft_chain_env = os.environ.get("DRAFT_REPORT_MODEL_FALLBACK_CHAIN", "").strip()
 if _draft_chain_env:
     DRAFT_REPORT_MODEL_FALLBACK_CHAIN = [
         m.strip() for m in _draft_chain_env.split(",") if m.strip()
     ]
 elif DRAFT_REPORT_MODEL:
-    DRAFT_REPORT_MODEL_FALLBACK_CHAIN = [DRAFT_REPORT_MODEL, "deepseek-v4-flash", "deepseek-v4-pro"]
+    DRAFT_REPORT_MODEL_FALLBACK_CHAIN = [DRAFT_REPORT_MODEL]
 else:
     DRAFT_REPORT_MODEL_FALLBACK_CHAIN = SUBAGENT_MODEL_FALLBACK_CHAIN
 
@@ -437,7 +437,7 @@ else:
 # "ResearchWeb", "ResearchReddit"). Leave empty to use the shared
 # SUBAGENT_MODEL_FALLBACK_CHAIN for every sub-agent. Set to give a specific
 # sub-agent its own model/fallback chain:
-#   SUBAGENT_MODEL_CHAIN_BY_AGENT = {"ResearchReddit": ["deepseek-v4-flash"]}
+#   SUBAGENT_MODEL_CHAIN_BY_AGENT = {"ResearchReddit": ["deepseek-v4.1-flash-1017"]}
 SUBAGENT_MODEL_CHAIN_BY_AGENT: dict[str, list[str]] = {}
 
 # Controls the destination of the research outputs
@@ -525,8 +525,9 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 # key, not part of the gateway's model names).
 KUBETEE_BASE_URL = "https://llm.kubetee.ai/v1"
 
-# DeepSeek V4 Flash hosted on OpenRouter via Alibaba Cloud International (Singapore)
-BABA_MODEL_ID = "deepseek/deepseek-v4-flash"
+# DeepSeek V4.1 Flash (1017 snapshot) hosted on OpenRouter via Alibaba Cloud
+# International (Singapore) — Alibaba serves the 1017 slug (verified 2026-10-24).
+BABA_MODEL_ID = "deepseek/deepseek-v4.1-flash-1017"
 BABA_PROVIDER_SLUG = "alibaba"
 
 # ── ROUTING: OpenRouter vs direct API ──────────────────────────────────
@@ -730,10 +731,10 @@ FETCH_URL_MAX_CHARS = int(os.environ.get("FETCH_URL_MAX_CHARS", "10000"))
 # Model name → OpenRouter slug when ROUTE_VIA_OPENROUTER is ON for that role.
 # meta models are handled separately (slug is "meta/<model-name>").
 _OPENROUTER_MODEL_MAP_BY_NAME = {
-    "deepseek-v4-pro": "deepseek/deepseek-v4-pro",
-    "deepseek-v4-flash": "deepseek/deepseek-v4-flash",
-    "mimo-v2.5": "xiaomi/mimo-v2.5",
-    "mimo-v2.5-pro": "xiaomi/mimo-v2.5-pro",
+    "deepseek-v4.1-flash-1017": "deepseek/deepseek-v4.1-flash-1017",
+    "deepseek-v4.1-flash": "deepseek/deepseek-v4.1-flash",
+    "mimo-v2.6-pro": "xiaomi/mimo-v2.6-pro",
+    "mimo-v2.6-flash": "xiaomi/mimo-v2.6-flash",
 }
 
 # ── Per-run credential resolver ──────────────────────────────────────────
@@ -1208,10 +1209,10 @@ def get_model(model_name: str = SUBAGENT_MODEL, temperature: float = 0, max_toke
             kwargs["extra_body"] = thinking
         return ChatDeepSeek(**kwargs)
 
-    # MiMo models (native API: api.xiaomimimo.com). Hosts both
-    # "mimo-v2.5-pro" (flagship) and "mimo-v2.5" (lighter, ~half cost).
+    # MiMo models (native API: api.xiaomimimo.com). Current line is v2.6:
+    # "mimo-v2.6-pro" (flagship) and "mimo-v2.6-flash" (lighter, cheaper).
     # To route MiMo through OpenRouter instead, use ROUTE_VIA_OPENROUTER
-    # (slug xiaomi/mimo-v2.5-pro / xiaomi/mimo-v2.5).
+    # (slug xiaomi/mimo-v2.6-pro / xiaomi/mimo-v2.6-flash).
     if "mimo" in model_lower:
         if _effort_body:
             _fallback_logger.warning(
@@ -1219,7 +1220,7 @@ def get_model(model_name: str = SUBAGENT_MODEL, temperature: float = 0, max_toke
                 "effort levels. Route via OpenRouter to honor them.", model_name
             )
         kwargs = {
-            "model": model_lower if model_lower in ("mimo-v2.5", "mimo-v2.5-pro") else "mimo-v2.5-pro",
+            "model": model_lower if model_lower in ("mimo-v2.6-pro", "mimo-v2.6-flash", "mimo-v2.6-pro-ultraspeed") else "mimo-v2.6-pro",
             "api_key": _require_api_key("MIMO_API_KEY", model_name),
             "base_url": MIMO_BASE_URL,
             "temperature": temperature,
@@ -1325,8 +1326,8 @@ def get_supervisor_model(tools: list = None, max_tokens: int = None, temperature
                          disable_fallback: bool = None):
     """Get a resilient model runnable for the supervisor role only.
 
-    Uses SUPERVISOR_MODEL_FALLBACK_CHAIN (defaults to deepseek-v4-flash →
-    deepseek-v4-pro) with LangChain's .with_fallbacks() mechanism. Pass `chain`
+    Uses SUPERVISOR_MODEL_FALLBACK_CHAIN (defaults to deepseek-v4.1-flash-1017)
+    with LangChain's .with_fallbacks() mechanism. Pass `chain`
     to override the chain per invocation (e.g. the draft report writer).
 
     Routing resolves via SUPERVISOR_ROUTE_VIA_OPENROUTER (inheriting
@@ -1417,7 +1418,7 @@ def get_subagent_model(
     """Get a resilient model runnable for the sub-agent role only.
 
     Research platform sub-agents use SUBAGENT_MODEL_FALLBACK_CHAIN (defaults to
-    deepseek-v4-flash) with LangChain's
+    deepseek-v4.1-flash-1017) with LangChain's
     .with_fallbacks() mechanism. Pass `chain` to override the
     chain per invocation (e.g. run_platform.py selecting gemini or the
     Alibaba-Singapore deepseek by model name). Routing resolves via

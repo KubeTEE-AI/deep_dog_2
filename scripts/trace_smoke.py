@@ -43,16 +43,16 @@ if str(ROOT) not in sys.path:
 # Model profiles for test runs — edit here instead of setting env vars.
 # Each profile maps to RunConfig model-chain fields (single-element = no fallback).
 PROFILES: dict[str, dict] = {
-    "default": {},  # engine defaults (supervisor deepseek-v4-pro, subagents deepseek-v4-flash)
+    "default": {},  # engine defaults (all roles: deepseek-v4.1-flash-1017)
     "nemotron-subagents": {
-        "supervisor_model_fallback_chain": ["deepseek-v4-flash"],
+        "supervisor_model_fallback_chain": ["deepseek-v4.1-flash-1017"],
         "subagent_model_fallback_chain": ["nvidia/nemotron-3.5-lightning"],
         "draft_report_model_fallback_chain": ["nvidia/nemotron-3.5-lightning"],
     },
     "all-deepseek": {
-        "supervisor_model_fallback_chain": ["deepseek-v4-pro"],
-        "subagent_model_fallback_chain": ["deepseek-v4-flash"],
-        "draft_report_model_fallback_chain": ["deepseek-v4-flash"],
+        "supervisor_model_fallback_chain": ["deepseek-v4.1-flash"],
+        "subagent_model_fallback_chain": ["deepseek-v4.1-flash-1017"],
+        "draft_report_model_fallback_chain": ["deepseek-v4.1-flash-1017"],
     },
 }
 

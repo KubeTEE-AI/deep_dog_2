@@ -2,6 +2,16 @@
 
 ## Unreleased (kubetee-staging)
 
+- **Model catalog modernization (2026-10-24)**: defaults moved to the current
+  generation — `deepseek-v4-flash` / `deepseek-v4-pro` →
+  `deepseek-v4.1-flash-1017` (the v4.1 line is flash-only, so both collapse onto
+  it and the default fallback chains are now single-entry), `mimo-v2.5` /
+  `mimo-v2.5-pro` → `mimo-v2.6-pro` (both MiMo tiers unified on pro). OpenRouter
+  slug map updated (`deepseek/deepseek-v4.1-flash-1017`,
+  `deepseek/deepseek-v4.1-flash`, `xiaomi/mimo-v2.6-pro`,
+  `xiaomi/mimo-v2.6-flash`); the native MiMo name whitelist now accepts the
+  v2.6 names. Slugs verified against the live OpenRouter catalog 2026-10-24.
+
 - **KubeTEE TEE gateway (`llm.kubetee.ai`) model routing** (KubeTEE
   integration): any model name prefixed `kubetee/` routes through the KubeTEE
   LiteLLM gateway (`ChatOpenAI` at `KUBETEE_API_BASE`, default

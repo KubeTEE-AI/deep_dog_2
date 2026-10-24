@@ -9,8 +9,8 @@ load_dotenv()
 
 
 CONFIG = RunConfig(
-    supervisor_model_fallback_chain=["deepseek-v4-flash"],
-    subagent_model_fallback_chain=["deepseek-v4-flash"],
+    supervisor_model_fallback_chain=["deepseek-v4.1-flash-1017"],
+    subagent_model_fallback_chain=["deepseek-v4.1-flash-1017"],
     research_time_max_minutes=10,
 )
 

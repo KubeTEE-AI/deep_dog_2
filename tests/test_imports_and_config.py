@@ -117,13 +117,13 @@ def test_model_factory_per_run_isolation():
     creds = Credentials({"DEEPSEEK_API_KEY": "sk-test-not-real"})
     cfg_a = RunConfig(
         profile="A",
-        subagent_model_fallback_chain=["deepseek-v4-pro"],
+        subagent_model_fallback_chain=["deepseek-v4.1-flash"],
         disable_model_fallback=True,
         route_via_openrouter=False,
     )
     cfg_b = RunConfig(
         profile="B",
-        subagent_model_fallback_chain=["deepseek-v4-flash"],
+        subagent_model_fallback_chain=["deepseek-v4.1-flash-1017"],
         disable_model_fallback=True,
         route_via_openrouter=False,
     )
@@ -141,7 +141,7 @@ def test_model_factory_per_run_isolation():
 
 def test_model_factory_cached_per_run():
     creds = Credentials({"DEEPSEEK_API_KEY": "sk-test-not-real"})
-    cfg = RunConfig(subagent_model_fallback_chain=["deepseek-v4-flash"],
+    cfg = RunConfig(subagent_model_fallback_chain=["deepseek-v4.1-flash-1017"],
                     disable_model_fallback=True)
     mf = ModelFactory(cfg, creds)
     first = mf.supervisor()

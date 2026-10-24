@@ -168,7 +168,7 @@ load_dotenv()
 
 from deep_research.integration import RunConfig, run_research
 
-MODEL = "deepseek-v4-flash"
+MODEL = "deepseek-v4.1-flash-1017"
 MAX_MINUTES = 10
 
 config = RunConfig(
@@ -304,9 +304,9 @@ load_dotenv()  # Before engine imports: deployment defaults are read at import.
 from deep_research.integration import RunConfig, run_research
 
 config = RunConfig(
-    supervisor_model_fallback_chain=["deepseek-v4-flash"],
-    subagent_model_fallback_chain=["deepseek-v4-flash"],
-    draft_report_model_fallback_chain=["deepseek-v4-flash"],
+    supervisor_model_fallback_chain=["deepseek-v4.1-flash-1017"],
+    subagent_model_fallback_chain=["deepseek-v4.1-flash-1017"],
+    draft_report_model_fallback_chain=["deepseek-v4.1-flash-1017"],
     enabled_agents=["ResearchWeb"],
     web_search_engine="exa",
     research_time_min_minutes=3,
@@ -345,13 +345,13 @@ Each role takes an ordered list of model names. **A one-item list simply selects
 
 | `RunConfig` field | Role | Example model selection |
 |---|---|---|
-| `supervisor_model_fallback_chain` | Planning, delegation and final report | `["deepseek-v4-flash"]` |
-| `subagent_model_fallback_chain` | Platform research and sub-agent report writing | `["deepseek-v4-flash"]` |
-| `draft_report_model_fallback_chain` | Research brief and initial draft | `["deepseek-v4-flash"]` |
+| `supervisor_model_fallback_chain` | Planning, delegation and final report | `["deepseek-v4.1-flash-1017"]` |
+| `subagent_model_fallback_chain` | Platform research and sub-agent report writing | `["deepseek-v4.1-flash-1017"]` |
+| `draft_report_model_fallback_chain` | Research brief and initial draft | `["deepseek-v4.1-flash-1017"]` |
 
 Native DeepSeek uses `DEEPSEEK_API_KEY`; NVIDIA names route through OpenRouter and use `OPENROUTER_API_KEY`. To route the supervisor's DeepSeek model through OpenRouter too, set `supervisor_route_via_openrouter=True`.
 
-**KubeTEE TEE gateway (llm.kubetee.ai):** prefix any model name with `kubetee/` to route it through the KubeTEE LiteLLM gateway instead of the model's native API — `["kubetee/deepseek/deepseek-v4.1-flash"]`, `["kubetee/z-ai/glm-5.3-flash"]`, `["kubetee/ornith/ornith-1.5-397b"]`, `["kubetee/xiaomi/mimo-v2.6-pro"]`. The prefix is a local routing key and is stripped before the call (the gateway's names are bare: `z-ai/glm-5.3-flash`, `deepseek/deepseek-v4.1-flash`, ...); it exists so `kubetee/z-ai/*` never leaks to `api.z.ai` and `kubetee/deepseek/*` never to `api.deepseek.com`. Set `KUBETEE_API_KEY` (or `KUBETEE_API_TOKEN` / `LITELLM_API_KEY`) and optionally `KUBETEE_API_BASE` (default `https://llm.kubetee.ai/v1`). Mixed chains work: `["kubetee/deepseek/deepseek-v4.1-flash", "deepseek-v4-flash"]` falls back from the TEE gateway to the native API.
+**KubeTEE TEE gateway (llm.kubetee.ai):** prefix any model name with `kubetee/` to route it through the KubeTEE LiteLLM gateway instead of the model's native API — `["kubetee/deepseek/deepseek-v4.1-flash"]`, `["kubetee/z-ai/glm-5.3-flash"]`, `["kubetee/ornith/ornith-1.5-397b"]`, `["kubetee/xiaomi/mimo-v2.6-pro"]`. The prefix is a local routing key and is stripped before the call (the gateway's names are bare: `z-ai/glm-5.3-flash`, `deepseek/deepseek-v4.1-flash`, ...); it exists so `kubetee/z-ai/*` never leaks to `api.z.ai` and `kubetee/deepseek/*` never to `api.deepseek.com`. Set `KUBETEE_API_KEY` (or `KUBETEE_API_TOKEN` / `LITELLM_API_KEY`) and optionally `KUBETEE_API_BASE` (default `https://llm.kubetee.ai/v1`). Mixed chains work: `["kubetee/deepseek/deepseek-v4.1-flash", "deepseek-v4.1-flash-1017"]` falls back from the TEE gateway to the native API.
 
 To use another model, replace the name in the relevant role field. Agent models need tool calling; the brief model needs structured output. For fallbacks after model errors, add alternatives and set `disable_model_fallback=False`. Entries without credentials may be skipped during model construction even when runtime fallback is disabled.
 
@@ -370,7 +370,7 @@ uv pip install "deep-dog-2[google] @ git+https://github.com/beneadie/deep_dog_2.
 
 For an editable source checkout, use `python -m pip install -e ".[google]"` or `uv pip install -e ".[google]"` instead.
 
-The configurable CLI example explicitly selects V4 Flash for each role. The library defaults also use V4 Flash as the primary model for each role, unless overridden by deployment environment settings.
+The configurable CLI example explicitly selects DeepSeek V4.1 Flash (1017) for each role. The library defaults use the same model as the primary for each role, unless overridden by deployment environment settings.
 
 ### Optional Nemotron profile
 
@@ -378,8 +378,8 @@ Nemotron 3.5 Lightning remains supported through OpenRouter and is a good low-co
 
 ```python
 config = RunConfig(
-    supervisor_model_fallback_chain=["deepseek-v4-flash"],
-    subagent_model_fallback_chain=["deepseek-v4-flash"],
+    supervisor_model_fallback_chain=["deepseek-v4.1-flash-1017"],
+    subagent_model_fallback_chain=["deepseek-v4.1-flash-1017"],
     draft_report_model_fallback_chain=["nvidia/nemotron-3.5-lightning"],
     draft_route_via_openrouter=True,
 )

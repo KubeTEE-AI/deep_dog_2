@@ -435,7 +435,7 @@ async def test_full_context_report(results: list) -> None:
         ],
         "saved_articles": {}, "findings_log": {},
         "research_topic": "Bloom sentiment",
-        "model_chain": ["deepseek-v4-flash"],
+        "model_chain": ["deepseek-v4.1-flash-1017"],
         "output_mode": "report_inline",
         "max_reads": 20, "max_saves": 15, "max_searches": 8, "max_concurrency": 5,
     }
@@ -504,7 +504,7 @@ async def test_sources_output(results: list) -> None:
         "saved_articles": saved, "articles_read": articles_read,
         "findings_log": {}, "researcher_messages": [],
         "research_topic": "Bloom Energy", "agent_type": "reddit",
-        "model_chain": ["deepseek-v4-flash"],
+        "model_chain": ["deepseek-v4.1-flash-1017"],
         "output_mode": "sources_inline",
         "include_article_text": False,
         "max_reads": 20, "max_saves": 15, "max_searches": 8, "max_concurrency": 5,
@@ -833,7 +833,7 @@ async def test_fallbacks(results: list) -> None:
         "saved_articles": {}, "articles_read": articles_read,
         "findings_log": {}, "researcher_messages": [],
         "research_topic": "Bloom", "agent_type": "reddit",
-        "model_chain": ["deepseek-v4-flash"],
+        "model_chain": ["deepseek-v4.1-flash-1017"],
         "output_mode": "sources_inline",
         "include_article_text": False, "search_results": search_results,
         "max_reads": 8, "max_saves": 15, "max_searches": 8, "max_concurrency": 4,
@@ -1206,15 +1206,15 @@ async def test_subagent_config(results: list) -> None:
         "print(c.SUBAGENT_MODEL, '|', c.SUBAGENT_MODEL_FALLBACK_CHAIN)"
     )
     env = dict(os.environ)
-    env["SUBAGENT_MODEL"] = "deepseek-v4-flash"
-    env["SUBAGENT_MODEL_FALLBACK_CHAIN"] = "deepseek-v4-flash,deepseek-v4-pro"
+    env["SUBAGENT_MODEL"] = "deepseek-v4.1-flash-1017"
+    env["SUBAGENT_MODEL_FALLBACK_CHAIN"] = "deepseek-v4.1-flash-1017,nvidia/nemotron-3.5-lightning"
     repo_root = str(Path(__file__).resolve().parents[1])
     r = subprocess.run(
         [sys.executable, "-c", code],
         capture_output=True, text=True, env=env, cwd=repo_root,
     )
     out = r.stdout.strip()
-    ok_override = "deepseek-v4-flash | ['deepseek-v4-flash', 'deepseek-v4-pro']" in out
+    ok_override = "deepseek-v4.1-flash-1017 | ['deepseek-v4.1-flash-1017', 'nvidia/nemotron-3.5-lightning']" in out
     results.append(("subagent_model_env_override", PASS_MARK if ok_override else FAIL_MARK, "-", out))
 
     # Per-agent override map injects model_chain into the registry adapter.
@@ -1228,7 +1228,7 @@ async def test_subagent_config(results: list) -> None:
     code2 = (
         "from dotenv import load_dotenv; load_dotenv();"
         "import deep_research.config as c;"
-        "c.SUBAGENT_MODEL_CHAIN_BY_AGENT['ResearchReddit'] = ['deepseek-v4-pro'];"
+        "c.SUBAGENT_MODEL_CHAIN_BY_AGENT['ResearchReddit'] = ['deepseek-v4.1-flash-1017'];"
         "import deep_research.agents as a;"
         "print(a.AGENT_REGISTRY['ResearchReddit']._model_chain, '|', a.AGENT_REGISTRY['ResearchWeb']._model_chain)"
     )
@@ -1237,7 +1237,7 @@ async def test_subagent_config(results: list) -> None:
         capture_output=True, text=True, env=env, cwd=repo_root,
     )
     out2 = r2.stdout.strip()
-    ok_per_agent = "['deepseek-v4-pro'] | None" in out2
+    ok_per_agent = "['deepseek-v4.1-flash-1017'] | None" in out2
     results.append(("subagent_per_agent_chain", PASS_MARK if ok_per_agent else FAIL_MARK, "-", out2))
 
     # Missing API key for one chain entry → skipped with warning (no import crash).
@@ -1249,7 +1249,7 @@ async def test_subagent_config(results: list) -> None:
         "print(type(m).__name__, '|', getattr(m, 'model_name', '?'))"
     )
     env = dict(os.environ)
-    env["SUBAGENT_MODEL_FALLBACK_CHAIN"] = "nvidia/nemotron-3.5-lightning,deepseek-v4-flash"
+    env["SUBAGENT_MODEL_FALLBACK_CHAIN"] = "nvidia/nemotron-3.5-lightning,deepseek-v4.1-flash-1017"
     env["OPENROUTER_API_KEY"] = "test-openrouter"
     r3 = subprocess.run(
         [sys.executable, "-c", code3],
@@ -1266,7 +1266,7 @@ async def test_subagent_config(results: list) -> None:
         "'OPENROUTER_API_KEY','MIMO_API_KEY','META_API_KEY','GEMINI_API_KEY',"
         "'GOOGLE_API_KEY','OPENAI_API_KEY','ZHIPUAI_API_KEY']];"
         "import deep_research.config as c;"
-        "print(c._model_key_available('deepseek-v4-flash', False))"
+        "print(c._model_key_available('deepseek-v4.1-flash-1017', False))"
     )
     env4 = dict(os.environ)
     r4 = subprocess.run(
@@ -1329,7 +1329,7 @@ async def test_routing_config(results: list) -> None:
 
     # 4. Invalid effort value raises a clear ValueError
     try:
-        config.get_model("deepseek-v4-flash", reasoning_effort="turbo")
+        config.get_model("deepseek-v4.1-flash-1017", reasoning_effort="turbo")
         ok_invalid = False
     except ValueError:
         ok_invalid = True
@@ -1346,7 +1346,7 @@ async def test_routing_config(results: list) -> None:
     env3["ROUTE_VIA_OPENROUTER"] = ""
     env3["DRAFT_ROUTE_VIA_OPENROUTER"] = ""
     env3["DRAFT_REPORT_REASONING_EFFORT"] = "medium"
-    env3["DRAFT_REPORT_MODEL"] = "deepseek-v4-flash"
+    env3["DRAFT_REPORT_MODEL"] = "deepseek-v4.1-flash-1017"
     r3 = subprocess.run([sys.executable, "-c", code3], capture_output=True, text=True, env=env3, cwd=repo_root)
     out3 = r3.stdout.strip()
     ok_native = out3.startswith("ChatDeepSeek") and "reasoning_effort ignored" in r3.stderr
@@ -1424,21 +1424,21 @@ async def test_meta(results: list) -> None:
     try:
         cfg.ROUTE_VIA_OPENROUTER = True
         for name, expect_slug in (
-            ("deepseek-v4-flash", "deepseek/deepseek-v4-flash"),
-            ("mimo-v2.5-pro", "xiaomi/mimo-v2.5-pro"),
+            ("deepseek-v4.1-flash-1017", "deepseek/deepseek-v4.1-flash-1017"),
+            ("mimo-v2.6-pro", "xiaomi/mimo-v2.6-pro"),
             (f"meta/{META_MODEL}", f"meta/{META_MODEL}"),
         ):
             m = get_model(name)
             ok = "openrouter" in str(m.openai_api_base) and m.model_name == expect_slug
             results.append((f"toggle_{name}", PASS_MARK if ok else FAIL_MARK, "-",
                             f"model={getattr(m, 'model_name', '?')} base={getattr(m, 'openai_api_base', '?')}"))
-        m = get_model("deepseek-v4-pro")
-        ok_sup = "openrouter" in str(m.openai_api_base) and m.model_name == "deepseek/deepseek-v4-pro"
+        m = get_model("deepseek-v4.1-flash")
+        ok_sup = "openrouter" in str(m.openai_api_base) and m.model_name == "deepseek/deepseek-v4.1-flash"
         results.append(("toggle_supervisor", PASS_MARK if ok_sup else FAIL_MARK, "-",
                         f"model={getattr(m, 'model_name', '?')}"))
         _prev_or = os.environ.get("OPENROUTER_API_KEY")
         os.environ["OPENROUTER_API_KEY"] = "test-key"
-        m = get_model("deepseek-v4-flash")
+        m = get_model("deepseek-v4.1-flash-1017")
         results.append(("toggle_key_available", PASS_MARK if "openrouter" in str(m.openai_api_base) else FAIL_MARK, "-",
                         "openrouter key suffices"))
         if _prev_or is None:

@@ -106,9 +106,9 @@ def test_validate_engine_desearch_requires_desearch_key():
 def test_validate_engine_desearch_satisfied():
     creds = Credentials({"DEEPSEEK_API_KEY": "x", "DESEARCH_API_KEY": "y"})
     cfg = RunConfig(web_search_engine="desearch",
-                    supervisor_model_fallback_chain=["deepseek-v4-flash"],
-                    subagent_model_fallback_chain=["deepseek-v4-flash"],
-                    draft_report_model_fallback_chain=["deepseek-v4-flash"])
+                    supervisor_model_fallback_chain=["deepseek-v4.1-flash-1017"],
+                    subagent_model_fallback_chain=["deepseek-v4.1-flash-1017"],
+                    draft_report_model_fallback_chain=["deepseek-v4.1-flash-1017"])
     assert validate_credentials(config=cfg, credentials=creds).ok
 
 
@@ -123,9 +123,9 @@ def test_validate_reddit_with_desearch_key_makes_reddit_creds_optional():
     creds = Credentials({"DEEPSEEK_API_KEY": "x", "DESEARCH_API_KEY": "y"})
     cfg = RunConfig(enabled_agents=["ResearchWeb", "ResearchReddit"],
                     web_search_engine="desearch",
-                    supervisor_model_fallback_chain=["deepseek-v4-flash"],
-                    subagent_model_fallback_chain=["deepseek-v4-flash"],
-                    draft_report_model_fallback_chain=["deepseek-v4-flash"])
+                    supervisor_model_fallback_chain=["deepseek-v4.1-flash-1017"],
+                    subagent_model_fallback_chain=["deepseek-v4.1-flash-1017"],
+                    draft_report_model_fallback_chain=["deepseek-v4.1-flash-1017"])
     check = validate_credentials(config=cfg, credentials=creds)
     for key in ("REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET",
                 "REDDIT_USERNAME", "REDDIT_PASSWORD"):

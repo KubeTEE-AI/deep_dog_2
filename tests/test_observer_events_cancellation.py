@@ -144,8 +144,8 @@ def test_two_concurrent_runtimes_isolated():
 
     async def main():
         c1, c2 = EventCollector(), EventCollector()
-        t1 = asyncio.create_task(run_one("muse", ["deepseek-v4-pro"], c1))
-        t2 = asyncio.create_task(run_one("deepseek", ["deepseek-v4-flash"], c2))
+        t1 = asyncio.create_task(run_one("muse", ["deepseek-v4.1-flash"], c1))
+        t2 = asyncio.create_task(run_one("deepseek", ["deepseek-v4.1-flash-1017"], c2))
         r1, r2 = await asyncio.gather(t1, t2)
         return r1, r2, c1, c2
 
