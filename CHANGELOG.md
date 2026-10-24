@@ -2,6 +2,22 @@
 
 ## Unreleased (kubetee-staging)
 
+- **KubeTEE TEE gateway (`llm.kubetee.ai`) model routing** (KubeTEE
+  integration): any model name prefixed `kubetee/` routes through the KubeTEE
+  LiteLLM gateway (`ChatOpenAI` at `KUBETEE_API_BASE`, default
+  `https://llm.kubetee.ai/v1`) instead of the model's native API. The prefix is
+  a **local routing key and is stripped before the call** — the gateway's model
+  names are bare (`z-ai/glm-5.3-flash`, `deepseek/deepseek-v4.1-flash`,
+  `ornith/ornith-1.5-397b`, `xiaomi/mimo-v2.6-pro`, ...); verified live
+  2026-10-24 (prefixed form rejected as "Invalid model name", stripped alias
+  returns 200). The prefix check runs **before** all name-based provider
+  detection so `kubetee/z-ai/*` never leaks to `api.z.ai` and `kubetee/deepseek/*`
+  never to `api.deepseek.com` (the LiteLLM template-copy failure class). Keys:
+  `KUBETEE_API_KEY` (or `KUBETEE_API_TOKEN` / `LITELLM_API_KEY`), base override
+  `KUBETEE_API_BASE`. `model_required_keys` reports the key set for `kubetee/*`
+  names so chain filtering and `validate_credentials` treat them like any other
+  provider.
+
 - **Desearch (Bittensor SN22) provider** (KubeTEE integration): a new
   `desearch_search` web tool (multi-source: web, X/Twitter, Reddit, arXiv,
   YouTube, Hacker News, Wikipedia) joins Tavily and Exa; `WEB_SEARCH_ENGINE`

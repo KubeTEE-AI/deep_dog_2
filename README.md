@@ -150,6 +150,8 @@ The installer fetches the repository, builds the package and installs its depend
 ```dotenv
 DEEPSEEK_API_KEY=your-deepseek-key
 EXA_API_KEY=your-exa-key
+# KubeTEE TEE gateway (llm.kubetee.ai) — for "kubetee/*" model names:
+# KUBETEE_API_KEY=your-kubetee-key
 # Optional — Desearch (Bittensor SN22) web/social search + page extraction:
 # DESEARCH_API_KEY=your-desearch-key
 ```
@@ -348,6 +350,8 @@ Each role takes an ordered list of model names. **A one-item list simply selects
 | `draft_report_model_fallback_chain` | Research brief and initial draft | `["deepseek-v4-flash"]` |
 
 Native DeepSeek uses `DEEPSEEK_API_KEY`; NVIDIA names route through OpenRouter and use `OPENROUTER_API_KEY`. To route the supervisor's DeepSeek model through OpenRouter too, set `supervisor_route_via_openrouter=True`.
+
+**KubeTEE TEE gateway (llm.kubetee.ai):** prefix any model name with `kubetee/` to route it through the KubeTEE LiteLLM gateway instead of the model's native API — `["kubetee/deepseek/deepseek-v4.1-flash"]`, `["kubetee/z-ai/glm-5.3-flash"]`, `["kubetee/ornith/ornith-1.5-397b"]`, `["kubetee/xiaomi/mimo-v2.6-pro"]`. The prefix is a local routing key and is stripped before the call (the gateway's names are bare: `z-ai/glm-5.3-flash`, `deepseek/deepseek-v4.1-flash`, ...); it exists so `kubetee/z-ai/*` never leaks to `api.z.ai` and `kubetee/deepseek/*` never to `api.deepseek.com`. Set `KUBETEE_API_KEY` (or `KUBETEE_API_TOKEN` / `LITELLM_API_KEY`) and optionally `KUBETEE_API_BASE` (default `https://llm.kubetee.ai/v1`). Mixed chains work: `["kubetee/deepseek/deepseek-v4.1-flash", "deepseek-v4-flash"]` falls back from the TEE gateway to the native API.
 
 To use another model, replace the name in the relevant role field. Agent models need tool calling; the brief model needs structured output. For fallbacks after model errors, add alternatives and set `disable_model_fallback=False`. Entries without credentials may be skipped during model construction even when runtime fallback is disabled.
 

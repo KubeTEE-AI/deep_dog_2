@@ -244,6 +244,11 @@ Examples of model names accepted by get_model():
 #   ZHIPUAI_API_KEY                      Z.AI GLM
 #   EXA_API_KEY                          Exa search
 #   DESEARCH_BASE_URL                    Desearch API base (default https://api.desearch.ai)
+#   DESEARCH_API_KEY                     Desearch (Bittensor SN22) search/extract
+#   KUBETEE_API_KEY (or KUBETEE_API_TOKEN or LITELLM_API_KEY)
+#                                        KubeTEE TEE gateway (llm.kubetee.ai) —
+#                                        required for "kubetee/*" model names
+#   KUBETEE_API_BASE                     KubeTEE gateway base (default https://llm.kubetee.ai/v1)
 #   PERPLEXITY_KEY                       Substack/Perplexity search
 #   PUBMED_EMAIL                         PubMed E-utilities contact
 #   SEC_EDGAR_CONTACT_EMAIL              SEC EDGAR contact
@@ -514,6 +519,11 @@ TOOL_TIMEOUT = 120
 MIMO_BASE_URL = "https://api.xiaomimimo.com/v1"
 META_BASE_URL = "https://api.meta.ai/v1"
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+# KubeTEE TEE gateway (LiteLLM proxy, na-us-oakland-56). Model names prefixed
+# "kubetee/" route here in get_model() BEFORE any name-based provider
+# detection (the prefix is stripped before the call — it is a local routing
+# key, not part of the gateway's model names).
+KUBETEE_BASE_URL = "https://llm.kubetee.ai/v1"
 
 # DeepSeek V4 Flash hosted on OpenRouter via Alibaba Cloud International (Singapore)
 BABA_MODEL_ID = "deepseek/deepseek-v4-flash"
@@ -778,6 +788,11 @@ def model_required_keys(model_name: str, route_via_openrouter: bool = False) -> 
     (e.g. DEEPSEEK_API_KEY or DEEPSEEK_KEY).
     """
     model_lower = model_name.lower()
+    # KubeTEE gateway names ("kubetee/...") MUST win over name-based detection:
+    # the prefix is a local routing key (stripped before the API call), and
+    # "kubetee/z-ai/glm-5.3-flash" is a gateway alias, not a Z.AI native model.
+    if model_lower.startswith("kubetee/"):
+        return ["KUBETEE_API_KEY", "KUBETEE_API_TOKEN", "LITELLM_API_KEY"]
     if route_via_openrouter:
         slug = _OPENROUTER_MODEL_MAP_BY_NAME.get(model_lower)
         if slug is None and "muse" in model_lower and not model_name.startswith("meta/"):
@@ -1054,6 +1069,36 @@ def get_model(model_name: str = SUBAGENT_MODEL, temperature: float = 0, max_toke
             )
         _effort_body = {"reasoning": {"effort": reasoning_effort}}
 
+    # KubeTEE TEE gateway (LiteLLM proxy at llm.kubetee.ai): any model name
+    # prefixed "kubetee/" routes here FIRST, before all name-based detection.
+    # The "kubetee/" prefix is a LOCAL routing key and is stripped before the
+    # call — the gateway's model names are bare aliases
+    # ("kubetee/z-ai/glm-5.3-flash" -> "z-ai/glm-5.3-flash",
+    # "kubetee/deepseek/deepseek-v4.1-flash" -> "deepseek/deepseek-v4.1-flash";
+    # the prefix survives as the literal provider segment in names like
+    # "deepseek/deepseek-v4.1-flash"). Verified live 2026-10-24: the prefixed
+    # form is rejected ("Invalid model name"), the stripped alias returns 200.
+    # This ordering is also load-bearing: substring detection would otherwise
+    # map "kubetee/z-ai/glm-5.3-flash" to api.z.ai and "kubetee/deepseek/*" to
+    # api.deepseek.com — the LiteLLM template-copy failure class.
+    if model_lower.startswith("kubetee/"):
+        alias = model_name.split("/", 1)[1].strip()
+        if not alias:
+            raise ValueError(
+                f"Invalid model name: {model_name!r} — the 'kubetee/' prefix "
+                f"requires a gateway model name (e.g. 'kubetee/z-ai/glm-5.3-flash')."
+            )
+        kwargs = {
+            "model": alias,
+            "api_key": _require_api_key("KUBETEE_API_KEY", model_name,
+                                        "KUBETEE_API_TOKEN", "LITELLM_API_KEY"),
+            "base_url": os.environ.get("KUBETEE_API_BASE") or KUBETEE_BASE_URL,
+            "temperature": temperature,
+        }
+        if max_tokens is not None:
+            kwargs["max_tokens"] = max_tokens
+        return ChatOpenAI(**kwargs)
+
     # ROUTE_VIA_OPENROUTER: send known direct-API models through OpenRouter so a
     # single OPENROUTER_API_KEY covers the supervisor chain, writers, and search.
     if _route:
@@ -1251,7 +1296,8 @@ def get_model(model_name: str = SUBAGENT_MODEL, temperature: float = 0, max_toke
     # If we can't determine the provider, raise an error
     raise ValueError(
         f"Cannot determine provider for model: {model_name}. "
-        f"Supported providers: OpenAI (gpt-*), Google (gemini-*), "
+        f"Supported providers: KubeTEE gateway (kubetee/*), "
+        f"OpenAI (gpt-*), Google (gemini-*), "
         f"Z.AI GLM (glm-*), DeepSeek (deepseek-*), MiMo (mimo-*), "
         f"Meta Muse (muse-* / meta/*), OpenRouter Nemotron (nemotron-* / nvidia/*)"
     )
